@@ -1,0 +1,16 @@
+# Sinh bởi scripts/configure.py
+# Áp dụng whitelist IP cho cổng mail/API mỗi khi khởi động (sau Docker).
+[Unit]
+Description=Mailu IP whitelist (iptables)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart={{install_dir}}/scripts/firewall-whitelist.sh apply
+ExecReload={{install_dir}}/scripts/firewall-whitelist.sh apply
+ExecStop={{install_dir}}/scripts/firewall-whitelist.sh remove
+
+[Install]
+WantedBy=multi-user.target

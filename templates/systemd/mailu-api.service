@@ -1,0 +1,21 @@
+# Sinh bởi scripts/configure.py — cài: cp generated/systemd/*.service /etc/systemd/system/
+[Unit]
+Description=Mail API (chờ/đọc email từ Mailu qua IMAP)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory={{install_dir}}
+Environment="PATH={{install_dir}}/venv/bin"
+# app.py tự đọc {{install_dir}}/.env; không cần đặt secrets ở đây
+ExecStart={{install_dir}}/venv/bin/gunicorn \
+  -w 1 \
+  -k gevent \
+  --worker-connections 1000 \
+  -b {{api.host}}:{{api.port}} \
+  app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+# Sinh bởi scripts/configure.py
+# Tự áp dụng whitelist (nginx + iptables) mỗi khi sửa whitelist/api.txt hoặc whitelist/mail.txt.
+[Unit]
+Description=Theo dõi thay đổi whitelist Mailu
+
+[Path]
+PathChanged={{install_dir}}/whitelist/api.txt
+PathChanged={{install_dir}}/whitelist/mail.txt
+
+[Install]
+WantedBy=multi-user.target

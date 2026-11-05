@@ -1,0 +1,9 @@
+# Danh sách hộp thư (mật khẩu dạng rõ) — file thật mail-config.yml không commit.
+users:
+  - localpart: user1
+    domain: example.com
+    password: change-me
+
+  - localpart: user2
+    domain: example.com
+    password: change-me

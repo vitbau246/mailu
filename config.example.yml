@@ -1,0 +1,67 @@
+# =============================================================================
+# Cấu hình triển khai — file DUY NHẤT cần sửa.
+#
+#   cp config.example.yml config.yml      # config.yml KHÔNG được commit
+#   chmod 600 config.yml
+#   # sửa các giá trị bên dưới
+#   venv/bin/python scripts/configure.py  # sinh .env, mailu.env, generated/
+#
+# Mọi domain, IP, cổng, đường dẫn và secrets của server thật chỉ nằm ở đây.
+# Tạo secret ngẫu nhiên:  openssl rand -hex 16  /  openssl rand -hex 32
+# =============================================================================
+
+# Thư mục chứa dự án trên server (dùng cho unit systemd, hook certbot)
+install_dir: /opt/mailu
+
+mail:
+  domain: example.com             # domain chính của email (user@example.com)
+  hostname: mail.example.com      # hostname mail server (MX, IMAP/SMTP, webmail)
+  website: https://example.com
+  postmaster: admin               # admin@example.com
+
+server:
+  public_ipv4: 203.0.113.10       # IP public của server
+  public_ipv6: ""                 # để trống nếu không có
+  ext_iface: ""                   # interface ra Internet; trống = tự dò theo default route
+
+mailu:
+  version: "2024.06"
+  data_dir: /srv/mailu            # nơi Mailu lưu dữ liệu (mail, db, dkim, queue...)
+  http_bind: 127.0.0.1:8080       # cổng HTTP của Mailu front (nginx host proxy vào đây)
+  subnet: 192.168.203.0/24        # mạng docker nội bộ của Mailu
+  gateway_ip: 192.168.203.1       # gateway của subnet (IP nginx host hiện ra với Mailu)
+  resolver_ip: 192.168.203.254    # IP tĩnh của container resolver (trong subnet)
+  secret_key: change-me           # openssl rand -hex 16
+  api_token: change-me            # openssl rand -hex 32 — token REST API của Mailu
+  tls:
+    flavor: mail                  # mail | cert | letsencrypt | mail-letsencrypt | notls
+    letsencrypt_name: example.com # thư mục /etc/letsencrypt/live/<tên> có chứng chỉ phủ mail.hostname
+  auth_ratelimit_ip: 5/hour
+  auth_ratelimit_user: 50/day
+  message_ratelimit: 20/day
+  message_size_limit: 50000000
+  webmail: roundcube              # roundcube | snappymail | none
+  timezone: Etc/UTC
+  default_spam_threshold: 80
+
+api:                              # Mail API (app.py)
+  host: 127.0.0.1                 # bind gunicorn; 127.0.0.1 khi đi qua nginx
+  port: 8000
+  imap_host: ""                   # trống = mail.hostname
+  imap_port: 993
+  mailbox_password: change-me     # mật khẩu chung của các hộp thư API đăng nhập
+  wait_timeout: 300
+  max_wait_timeout: 600
+  poll_interval: 5
+  log_level: INFO
+  trusted_proxies: [127.0.0.1, "::1"]
+
+nginx:
+  api_hostname: api.example.com   # vhost cho Mail API (templates/nginx/mail-api.conf)
+  mail_mode: both                 # vhost domain mail: webmail | api | both
+  letsencrypt_email: ""           # để scripts/nginx-setup.sh tự xin chứng chỉ
+
+firewall:
+  # Cổng mail client giới hạn theo whitelist/mail.txt. KHÔNG thêm 25 nếu cần nhận thư từ Internet.
+  mail_protected_ports: [110, 995, 143, 993, 465, 587]
+  protect_api: true               # chặn cổng API ở iptables theo whitelist/api.txt

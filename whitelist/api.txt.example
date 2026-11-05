@@ -1,0 +1,5 @@
+# Whitelist IP được phép gọi Mail API (app.py). Mỗi dòng một IP hoặc CIDR, IPv4/IPv6.
+# localhost (127.0.0.0/8, ::1) luôn được phép. File được nạp lại tự động khi thay đổi.
+# Ví dụ:
+# 203.0.113.10
+# 198.51.100.0/24

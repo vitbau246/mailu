@@ -1,0 +1,22 @@
+# Mẫu file import cấu hình cho Mailu:
+#   docker compose exec -T admin flask mailu config-import -v < mailu-users.yml
+# File mailu-users.yml thật chứa hash mật khẩu/khóa DKIM -> không commit.
+# Tạo hash: docker compose exec admin flask mailu password-hash  (hoặc dùng password_hash + hash_scheme)
+
+domain:
+  - name: example.com
+    # dkim_key: <PEM private key>   # để trống để Mailu tự sinh
+
+user:
+  - email: admin@example.com
+    global_admin: true
+    password: <bcrypt-sha256 hash>
+    spam_threshold: 80
+  - email: user1@example.com
+    change_pw_next_login: false
+    password: <bcrypt-sha256 hash>
+    spam_threshold: 80
+
+alias: []
+
+relay: []

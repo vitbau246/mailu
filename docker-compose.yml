@@ -1,0 +1,186 @@
+# Stack Mailu. Các giá trị riêng của server (đường dẫn, mạng, cổng, chứng chỉ) lấy từ .env,
+# file này do scripts/configure.py sinh ra từ config.yml — chạy configure.py trước.
+
+services:
+
+  # External dependencies
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/redis:/data"
+    depends_on:
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  # Core services
+  front:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}nginx:${MAILU_VERSION:-2024.06}
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-front
+    ports:
+      - "${MAILU_HTTP_BIND:?}:80"
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "110:110"
+      - "995:995"
+      - "143:143"
+      - "993:993"
+      - "127.0.0.1:4190:4190"
+    networks:
+      - default
+      - webmail
+    volumes:
+      # Chứng chỉ Let's Encrypt do certbot trên host tự gia hạn (chỉ mount đúng chứng chỉ cần dùng).
+      # live/ chứa symlink tương đối tới ../../archive/ nên phải mount cả hai.
+      - "/etc/letsencrypt/live/${TLS_CERT_NAME:?}:/certs/live/${TLS_CERT_NAME:?}:ro"
+      - "/etc/letsencrypt/archive/${TLS_CERT_NAME:?}:/certs/archive/${TLS_CERT_NAME:?}:ro"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/overrides/nginx:/overrides:ro"
+    depends_on:
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  resolver:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}unbound:${MAILU_VERSION:-2024.06}
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-resolver
+    restart: always
+    networks:
+      default:
+        ipv4_address: ${MAILU_RESOLVER_IP:?}
+
+  admin:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}admin:${MAILU_VERSION:-2024.06}
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-admin
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/data:/data"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/dkim:/dkim"
+    depends_on:
+      - redis
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  imap:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}dovecot:${MAILU_VERSION:-2024.06}
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-imap
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/mail:/mail"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/overrides/dovecot:/overrides:ro"
+    networks:
+      - default
+    depends_on:
+      - front
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  smtp:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}postfix:${MAILU_VERSION:-2024.06}
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-smtp
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/mailqueue:/queue"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/overrides/postfix:/overrides:ro"
+    depends_on:
+      - front
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  oletools:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}oletools:${MAILU_VERSION:-2024.06}
+    hostname: oletools
+    logging:
+      driver: journald
+      options:
+        tag: mailu-oletools
+    restart: always
+    networks:
+      - oletools
+    depends_on:
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+
+  antispam:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}rspamd:${MAILU_VERSION:-2024.06}
+    hostname: antispam
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-antispam
+    networks:
+      - default
+      - oletools
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/filter:/var/lib/rspamd"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/overrides/rspamd:/overrides:ro"
+    depends_on:
+      - front
+      - redis
+      - oletools
+      - resolver
+    dns:
+      - ${MAILU_RESOLVER_IP:?}
+
+  # Optional services
+
+
+
+  # Webmail
+  webmail:
+    image: ${DOCKER_ORG:-ghcr.io/mailu}/${DOCKER_PREFIX:-}webmail:${MAILU_VERSION:-2024.06}
+    restart: always
+    env_file: mailu.env
+    logging:
+      driver: journald
+      options:
+        tag: mailu-webmail
+    volumes:
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/webmail:/data"
+      - "${MAILU_DATA_DIR:?chạy scripts/configure.py}/overrides/roundcube:/overrides:ro"
+    networks:
+      - webmail
+    depends_on:
+      - front
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: ${MAILU_SUBNET:?}
+  webmail:
+    driver: bridge
+  oletools:
+    driver: bridge
+    internal: true

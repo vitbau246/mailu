@@ -1,0 +1,8 @@
+# Sinh bởi scripts/configure.py
+[Unit]
+Description=Áp dụng whitelist Mailu (nginx snippet + iptables)
+
+[Service]
+Type=oneshot
+ExecStart={{install_dir}}/scripts/nginx-whitelist.sh
+ExecStart={{install_dir}}/scripts/firewall-whitelist.sh apply

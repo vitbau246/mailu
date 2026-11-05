@@ -1,0 +1,22 @@
+# ---- Cấu hình thực tế (chứa domain, IP, cổng, secrets) — KHÔNG commit ----
+config.yml
+.env
+mailu.env
+mailu-users.yml
+mail-config.yml
+whitelist/*.txt
+!whitelist/*.txt.example
+certs/
+
+# File sinh ra bởi scripts/configure.py
+generated/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Rác
+*.save
+*.bak
+*.tmp

@@ -1,0 +1,5 @@
+# Whitelist IP được phép kết nối các cổng mail client (IMAP/POP3/SMTP submission)
+# của Mailu. Mỗi dòng một IP hoặc CIDR. Áp dụng bằng: sudo scripts/firewall-whitelist.sh apply
+# Ví dụ:
+# 203.0.113.10
+# 198.51.100.0/24
